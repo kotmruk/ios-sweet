@@ -1,0 +1,49 @@
+workflows:
+  xnu:
+    name: xnu kernel
+    instance_type: mac_mini_m2
+    max_build_duration: 120
+    environment:
+      xcode: 15.4
+      vars:
+        DXB_REPO: https://github.com/blacktop/darwin-xnu-build
+        DXB_SHA: 663906528d1cd5ea8fde7de6f16de73db9511549
+        MACOS_VERSION: "13.5"
+        KERNEL_CONFIG: DEVELOPMENT
+        MACHINE_CONFIG: SWEET
+        MAKEFLAGS: "-k"
+    scripts:
+      - name: Xcode check
+        script: |
+          sw_vers
+          xcodebuild -version
+          xcrun --find iig
+          ls -d /Applications/Xcode*.app
+      - name: Fetch build script
+        script: |
+          set -e
+          git init -q dxb
+          git -C dxb fetch -q --depth 1 "$DXB_REPO" "$DXB_SHA"
+          git -C dxb checkout -q FETCH_HEAD
+          cp xnu/patches/*.patch xnu/patches/*.sh dxb/patches/
+          sed -i '' 's/ARCHS="x86_64 arm64e" VALID_ARCHS="x86_64 arm64e"/ARCHS="x86_64 arm64e arm64" VALID_ARCHS="x86_64 arm64e arm64"/' dxb/build.sh
+          grep -c 'VALID_ARCHS="x86_64 arm64e arm64"' dxb/build.sh
+      - name: Deps
+        script: |
+          set -e
+          brew install jq gum bash cmake ninja
+          mkdir -p "$HOME/bin"
+          printf '#!/bin/sh\nexit 0\n' > "$HOME/bin/xcodes"
+          chmod +x "$HOME/bin/xcodes"
+          echo "PATH=$HOME/bin:$PATH" >> "$CM_ENV"
+      - name: Build
+        working_directory: dxb
+        script: bash build.sh
+      - name: Collect
+        script: |
+          mkdir -p out
+          cp -R dxb/fakeroot/System/Library/Kernels/. out/
+          ls -la out
+          (cd out && shasum -a 256 kernel.* > SHA256SUMS)
+    artifacts:
+      - out/**
