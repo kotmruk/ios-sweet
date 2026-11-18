@@ -1,0 +1,65 @@
+--- a/bsd/dev/sweet_touch.c
++++ b/bsd/dev/sweet_touch.c
+@@ -705,6 +705,8 @@
+ 	return 0;
+ }
+ 
++static unsigned ts_coord, ts_stat, ts_logged;
++
+ static int
+ touch_sec_ts(void)
+ {
+@@ -726,6 +728,15 @@
+ 			break; /* Buffer empty */
+ 		}
+ 		uint8_t eid = buf[0] & 3u;
++		if (eid != SEC_TS_COORDINATE_EVENT) {
++			ts_stat++;
++			if (ts_logged++ < 60) {
++				printf("SWEET TOUCH: status ev %02x %02x %02x %02x %02x %02x %02x %02x\n",
++				    buf[0], buf[1], buf[2], buf[3], buf[4], buf[5], buf[6], buf[7]);
++			}
++		} else {
++			ts_coord++;
++		}
+ 		if (eid == SEC_TS_COORDINATE_EVENT) {
+ 			uint8_t tid = (buf[0] >> 2) & 0x0fu;
+ 			uint8_t tchsta = (buf[0] >> 6) & 0x03u;
+@@ -737,6 +748,10 @@
+ 				unsigned py = (raw_y * 2399u) / 4095u;
+ 				if (px > 1079u) px = 1079u;
+ 				if (py > 2399u) py = 2399u;
++				if (ts_coord <= 40) {
++					printf("SWEET TOUCH: pt tid=%u sta=%u raw=%u,%u -> %u,%u\n",
++					    tid, tchsta, raw_x, raw_y, px, py);
++				}
+ 
+ 				if (tchsta == SEC_TS_COORDINATE_ACTION_PRESS ||
+ 				    tchsta == SEC_TS_COORDINATE_ACTION_MOVE) {
+@@ -959,8 +974,25 @@
+ 	printf("SWEET TOUCH: selected %s, 1080x2400, poll=10ms irq-hint=%d\n",
+ 	    (st.kind == TOUCH_SEC_TS) ? "Samsung S6SY771 (sec_ts)" :
+ 	    (st.kind == TOUCH_GOODIX) ? "GT9896 Yellowstone" : "Focaltech 54:52", st.irq_hint);
+-	unsigned errors = 0, ticks = 0;
++	unsigned errors = 0, ticks = 0, hb = 0, idle_hb = 0, last_coord = 0, kick = 0;
++	(void)PE_parse_boot_argn("sweettouchkick", &kick, sizeof(kick));
+ 	while (!st.dead) {
++		if ((++hb % 500u) == 0) {
++			printf("SWEET TOUCH: alive coord=%u stat=%u active=%#x errors=%u irq9=%u kick=%u\n",
++			    ts_coord, ts_stat, st.active, errors,
++			    (unsigned)(touch_rd(st.gpio, TOUCH_GPIO_IO(9)) & 1u), kick);
++			if (ts_coord == last_coord) {
++				++idle_hb;
++			} else {
++				idle_hb = 0;
++				last_coord = ts_coord;
++			}
++			if (kick && idle_hb && (idle_hb % kick) == 0) {
++				const uint8_t sense_on = 0x10;
++				int ke = touch_msg(SEC_TS_I2C_ADDR, &sense_on, 1, NULL, 0, false);
++				printf("SWEET TOUCH: kick SENSE_ON err=%d\n", ke);
++			}
++		}
+ 		/* IRQ on GPIO 9 is active LOW when events are pending */
+ 		bool irq_active = !(touch_rd(st.gpio, TOUCH_GPIO_IO(9)) & 1u);
+ 		if (!st.irq_hint || st.active || irq_active ||
