@@ -62,7 +62,7 @@ diff --git a/bsd/dev/sweet_adreno_cp.c b/bsd/dev/sweet_adreno_cp.c
 +{
 + if (!memory || !memory->cpu || !memory->uncached ||
 +     memory->bytes != A618_CP_DMA_BYTES || ((uintptr_t)memory->cpu & 3) ||
-+     !firmware || bytes != 32136 || !barrier) return EINVAL;
++     !firmware || bytes != 32304 || !barrier) return EINVAL;
 + volatile uint32_t *sqe = (volatile uint32_t *)(memory->cpu + A618_CP_SQE_OFFSET);
 + for (unsigned i = 0; i < (bytes - 4) / 4; ++i) {
 +  uint32_t word = 0;

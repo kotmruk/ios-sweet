@@ -47,9 +47,9 @@ def main():
                   ('gmu-firmware', 0, firmware),
                   ('gmu-crc32', 0, struct.pack('<I', zlib.crc32(firmware))),
                   ('gmu-sha256', 0, bytes.fromhex(digest))]
-    optional = [('sqe-firmware', args.sqe_firmware, args.sqe_sha256, 32136),
+    optional = [('sqe-firmware', args.sqe_firmware, args.sqe_sha256, 32304),
                 ('zap-metadata', args.zap_metadata, args.zap_metadata_sha256, 0x1acc),
-                ('zap-code', args.zap_code, args.zap_code_sha256, 0x7c0)]
+                ('zap-code', args.zap_code, args.zap_code_sha256, 0x7b0)]
     if bool(args.zap_metadata) != bool(args.zap_code):
         parser.error('Both signed ZAP metadata and code are required')
     for name, path, expected, size in optional:
@@ -63,7 +63,7 @@ def main():
                            (name + '-crc32', 0, struct.pack('<I', zlib.crc32(blob)))])
     if args.zap_metadata:
         # Live sweet device DT reservation, not the differing mainline DT base.
-        node.props.extend([('zap-reserved-base', 0, struct.pack('<Q', 0x97f15000)),
+        node.props.extend([('zap-reserved-base', 0, struct.pack('<Q', 0x9a915000)),
                            ('zap-reserved-size', 0, struct.pack('<I', 0x2000))])
     root.children.append(node)
     output = adt.serialize(root)

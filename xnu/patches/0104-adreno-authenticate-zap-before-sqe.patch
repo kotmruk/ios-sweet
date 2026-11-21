@@ -32,8 +32,8 @@ diff --git a/bsd/dev/sweet_adreno_cp.c b/bsd/dev/sweet_adreno_cp.c
  {
   if (!valid_io(gpu) || !valid_io(gmu) || !memory || !memory->cpu ||
       memory->bytes != A618_CP_DMA_BYTES || !memory->uncached || !firmware ||
--     bytes != 32136 || !barrier || !result) return EINVAL;
-+     bytes != 32136 || !barrier || !secure_prepare || !result) return EINVAL;
+-     bytes != 32304 || !barrier || !result) return EINVAL;
++     bytes != 32304 || !barrier || !secure_prepare || !result) return EINVAL;
   *result = (struct a618_cp_result){0};
   /* Firmware version excludes the container DWORD. Require patched A630 SQE
    * at least as new as the pinned Linux driver requires for WHERE_AM_I. */
